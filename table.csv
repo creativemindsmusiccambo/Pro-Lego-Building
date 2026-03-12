@@ -1,0 +1,5 @@
+﻿Control,Action
+**Scroll Wheel**,Rotate brick 90° before placing
+**R key**,Rotate manually
+**G key**,Toggle snap-to-grid on/off
+**Move Mouse**,Ghost brick follows cursor automatically

@@ -1,0 +1,2332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrickForge Pro | Studio Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #0a0a0a; 
+            font-family: 'Inter', sans-serif; 
+            color: #e5e5e5;
+        }
+
+        /* Black Glossy Glass Aesthetic */
+        .glass-panel {
+            background: linear-gradient(145deg, rgba(10, 10, 10, 0.95) 0%, rgba(5, 5, 5, 0.98) 100%);
+            backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 
+                inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                0 20px 40px rgba(0, 0, 0, 0.9),
+                0 0 0 1px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
+        }
+
+        .glass-panel::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        /* Indented Gradient Button Style */
+        .tool-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: linear-gradient(145deg, #0d0d0d 0%, #1a1a1a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.8),
+                inset 0 1px 0 rgba(255, 255, 255, 0.03),
+                0 1px 0 rgba(255, 255, 255, 0.02);
+            color: #666;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-btn:hover {
+            background: linear-gradient(145deg, #151515 0%, #222 100%);
+            color: #aaa;
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                0 0 15px rgba(255, 255, 255, 0.05);
+        }
+
+        .tool-btn:active {
+            background: linear-gradient(145deg, #000 0%, #0d0d0d 100%);
+            box-shadow: 
+                inset 0 3px 6px rgba(0, 0, 0, 1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.02);
+            transform: translateY(1px);
+        }
+
+        .tool-btn.active {
+            background: linear-gradient(145deg, #000 0%, #151515 100%);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 
+                inset 0 3px 8px rgba(0, 0, 0, 1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                0 0 20px rgba(255, 255, 255, 0.1),
+                inset 0 0 20px rgba(0, 0, 0, 0.8);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .tool-btn.active::before {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            border-radius: 8px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* Panel Toggle Buttons */
+        .panel-toggle {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 80px;
+            background: linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 45;
+            transition: all 0.3s ease;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .panel-toggle:hover {
+            background: linear-gradient(145deg, #222 0%, #151515 100%);
+            color: #fff;
+            width: 28px;
+        }
+
+        .panel-toggle.left {
+            left: 0;
+            border-radius: 0 8px 8px 0;
+            border-left: none;
+        }
+
+        .panel-toggle.right {
+            right: 0;
+            border-radius: 8px 0 0 8px;
+            border-right: none;
+        }
+
+        .panel-toggle.hidden-panel {
+            width: 32px;
+            background: linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,0.1);
+        }
+
+        /* Piece Cards with Indented Look */
+        .piece-card, .env-card {
+            background: linear-gradient(145deg, #151515 0%, #0a0a0a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                inset 0 1px 0 rgba(255, 255, 255, 0.03),
+                0 4px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .piece-card::before, .env-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .piece-card:hover, .env-card:hover {
+            background: linear-gradient(145deg, #1a1a1a 0%, #111 100%);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 
+                inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                0 8px 25px rgba(0, 0, 0, 0.8),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .piece-card.active, .env-card.active {
+            background: linear-gradient(145deg, #0a0a0a 0%, #050505 100%);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 
+                inset 0 3px 10px rgba(0, 0, 0, 1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                0 0 30px rgba(255, 255, 255, 0.08);
+        }
+
+        /* Color Swatches with Glossy Effect */
+        .color-swatch, .platform-swatch, .grid-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border: 1px solid rgba(0, 0, 0, 0.5);
+            position: relative;
+            box-shadow: 
+                inset 0 2px 4px rgba(255, 255, 255, 0.3),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+                0 4px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .color-swatch::before, .platform-swatch::before, .grid-swatch::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%);
+            border-radius: 8px 8px 0 0;
+            pointer-events: none;
+        }
+
+        .color-swatch:hover, .platform-swatch:hover, .grid-swatch:hover {
+            transform: scale(1.15) translateY(-2px);
+            box-shadow: 
+                inset 0 2px 4px rgba(255, 255, 255, 0.4),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+                0 8px 20px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        .color-swatch.active, .platform-swatch.active, .grid-swatch.active {
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 
+                0 0 0 2px #000,
+                0 0 0 3px rgba(255, 255, 255, 0.5),
+                inset 0 2px 4px rgba(255, 255, 255, 0.5),
+                0 0 20px currentColor;
+            transform: scale(1.1);
+            z-index: 20;
+        }
+
+        .color-swatch.active::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(0,0,0,0.8);
+            font-weight: 900;
+            font-size: 14px;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+            z-index: 2;
+        }
+
+        .stat-pill {
+            background: linear-gradient(145deg, #0a0a0a 0%, #151515 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 100px;
+            padding: 8px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.8),
+                0 1px 0 rgba(255, 255, 255, 0.02);
+            color: #888;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Header with Glass Effect */
+        header {
+            background: linear-gradient(180deg, rgba(26, 26, 26, 0.95) 0%, rgba(13, 13, 13, 0.98) 100%);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 
+                0 4px 20px rgba(0, 0, 0, 0.8),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        /* Sidebar Styling */
+        aside {
+            background: linear-gradient(180deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.98) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.9),
+                inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        /* Form Inputs with Indented Style */
+        input[type="text"], input[type="number"], textarea, select {
+            background: linear-gradient(145deg, #0a0a0a 0%, #111 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #e5e5e5;
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.8),
+                0 1px 0 rgba(255, 255, 255, 0.02);
+            transition: all 0.2s;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.6),
+                0 0 0 3px rgba(255, 255, 255, 0.05);
+        }
+
+        /* Primary Button */
+        .btn-primary {
+            background: linear-gradient(145deg, #2a2a2a 0%, #1f1f1f 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            box-shadow: 
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                0 4px 15px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(255, 255, 255, 0.05);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(145deg, #333 0%, #262626 100%);
+            box-shadow: 
+                inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                0 6px 20px rgba(0, 0, 0, 0.6),
+                0 0 30px rgba(255, 255, 255, 0.08);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #333 0%, #222 100%);
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #444 0%, #333 100%);
+        }
+
+        .selection-box {
+            position: absolute;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Tab Buttons */
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            background: linear-gradient(145deg, #0a0a0a 0%, #151515 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: #666;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:first-child { border-radius: 8px 0 0 8px; }
+        .tab-btn:last-child { border-radius: 0 8px 8px 0; }
+        .tab-btn:not(:last-child) { border-right: none; }
+
+        .tab-btn:hover {
+            background: linear-gradient(145deg, #151515 0%, #1a1a1a 100%);
+            color: #aaa;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(145deg, #000 0%, #0a0a0a 100%);
+            color: #fff;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        .env-icon {
+            font-size: 24px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+
+        .shortcut-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 9px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.3);
+            font-family: monospace;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: linear-gradient(145deg, #1a1a1a 0%, #111 100%);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.2s;
+            white-space: nowrap;
+            z-index: 1000;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .tooltip.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Assignment HUD */
+        .assignment-alert {
+            background: linear-gradient(145deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.98) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .undo-redo-btn {
+            opacity: 0.3;
+            transition: all 0.2s;
+        }
+        .undo-redo-btn.active {
+            opacity: 1;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, #141414 0%, #0a0a0a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9);
+        }
+
+        .progress-bar {
+            background: linear-gradient(145deg, #0a0a0a 0%, #111 100%);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.8) 100%);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .rot-btn {
+            background: linear-gradient(145deg, #151515 0%, #0a0a0a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: #666;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .rot-btn:hover {
+            background: linear-gradient(145deg, #1f1f1f 0%, #151515 100%);
+            color: #aaa;
+        }
+
+        .rot-btn.active {
+            background: linear-gradient(145deg, #000 0%, #111 100%);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+    </style>
+<base target="_blank">
+</head>
+<body class="bg-black">
+
+    <div id="selectionBox" class="selection-box"></div>
+    <div id="tooltip" class="tooltip"></div>
+
+    <!-- Panel Toggle Buttons -->
+    <div class="panel-toggle left" id="leftToggle" onclick="toggleLeftPanel()">
+        <i class="fas fa-chevron-left"></i>
+    </div>
+    <div class="panel-toggle right" id="rightToggle" onclick="toggleRightPanel()">
+        <i class="fas fa-chevron-right"></i>
+    </div>
+
+    <!-- Grid Settings Modal -->
+    <div id="gridModal" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="modal-content rounded-2xl w-full max-w-md relative">
+            <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+            <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                    <i class="fas fa-border-all"></i>
+                    Grid & Platform Settings
+                </h2>
+                <button onclick="closeGridModal()" class="w-10 h-10 rounded-lg bg-black/50 border border-white/10 text-gray-400 hover:text-white flex items-center justify-center">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-6">
+                <!-- Grid Visibility -->
+                <div class="flex items-center justify-between p-3 rounded-lg bg-white/[0.03] border border-white/5">
+                    <span class="text-sm text-gray-300">Show Grid Lines</span>
+                    <button onclick="toggleGridLines()" id="gridLinesBtn" class="w-12 h-6 rounded-full bg-white/20 relative transition-colors">
+                        <div class="absolute right-1 top-1 w-4 h-4 rounded-full bg-white transition-all" id="gridLinesToggle"></div>
+                    </button>
+                </div>
+
+                <!-- Grid Color -->
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Grid Line Color</div>
+                    <div class="grid grid-cols-6 gap-2" id="gridColors">
+                        <div class="grid-swatch bg-gray-400 active" onclick="setGridColor(0x999999, this)" data-tooltip="Gray"></div>
+                        <div class="grid-swatch bg-black" onclick="setGridColor(0x000000, this)" data-tooltip="Black"></div>
+                        <div class="grid-swatch bg-white" onclick="setGridColor(0xffffff, this)" data-tooltip="White"></div>
+                        <div class="grid-swatch bg-red-500" onclick="setGridColor(0xff0000, this)" data-tooltip="Red"></div>
+                        <div class="grid-swatch bg-blue-500" onclick="setGridColor(0x0000ff, this)" data-tooltip="Blue"></div>
+                        <div class="grid-swatch bg-green-500" onclick="setGridColor(0x00ff00, this)" data-tooltip="Green"></div>
+                    </div>
+                </div>
+
+                <!-- Grid Opacity -->
+                <div>
+                    <div class="flex justify-between text-xs text-gray-500 mb-2">
+                        <span>Grid Opacity</span>
+                        <span id="gridOpacityValue">30%</span>
+                    </div>
+                    <input type="range" min="0" max="100" value="30" class="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer" oninput="setGridOpacity(this.value)">
+                </div>
+
+                <!-- Platform Color -->
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Platform Color</div>
+                    <div class="grid grid-cols-4 gap-3" id="platformColors">
+                        <div class="platform-swatch bg-gray-200 active" onclick="setPlatformColor(0xe5e5e5, this)" data-tooltip="Light Gray"></div>
+                        <div class="platform-swatch bg-gray-400" onclick="setPlatformColor(0x888888, this)" data-tooltip="Medium Gray"></div>
+                        <div class="platform-swatch bg-white" onclick="setPlatformColor(0xffffff, this)" data-tooltip="White"></div>
+                        <div class="platform-swatch bg-amber-100" onclick="setPlatformColor(0xd4c5b0, this)" data-tooltip="Sand"></div>
+                        <div class="platform-swatch bg-blue-100" onclick="setPlatformColor(0xc5d4e0, this)" data-tooltip="Ice Blue"></div>
+                        <div class="platform-swatch bg-green-100" onclick="setPlatformColor(0xc5d4c5, this)" data-tooltip="Mint"></div>
+                        <div class="platform-swatch bg-gray-800" onclick="setPlatformColor(0x333333, this)" data-tooltip="Dark Gray"></div>
+                        <div class="platform-swatch bg-gray-900" onclick="setPlatformColor(0x1a1a1a, this)" data-tooltip="Black"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-white/5 bg-black/30 flex justify-end">
+                <button onclick="closeGridModal()" class="px-6 py-2 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-colors text-sm">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 h-16 z-50 flex justify-between items-center px-6" id="mainHeader">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-700 via-gray-800 to-black flex items-center justify-center text-xl border border-white/10 shadow-2xl relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
+                <i class="fas fa-cube text-white/90 relative z-10"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight text-white">BrickForge <span class="text-gray-500 font-light">Pro</span></h1>
+                <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <span class="w-2 h-2 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]"></span>
+                    <span>Studio Edition</span>
+                    <span class="text-gray-700">|</span>
+                    <span id="projectName" class="text-gray-400 cursor-pointer hover:text-white transition-colors" onclick="renameProject()">Untitled Project</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1 mr-2">
+                <button onclick="undo()" id="undoBtn" class="undo-redo-btn tool-btn" title="Undo (Ctrl+Z)">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button onclick="redo()" id="redoBtn" class="undo-redo-btn tool-btn" title="Redo (Ctrl+Y)">
+                    <i class="fas fa-redo"></i>
+                </button>
+            </div>
+
+            <div class="w-px h-8 bg-white/5"></div>
+
+            <div class="stat-pill">
+                <i class="fas fa-cube text-white/60 text-xs"></i>
+                <span class="text-gray-600">Bricks:</span>
+                <span class="stat-value" id="brickCount">0</span>
+                <span class="text-gray-700">/</span>
+                <span class="text-gray-600" id="maxBricks">∞</span>
+            </div>
+
+            <div class="stat-pill">
+                <i class="fas fa-ruler-vertical text-white/60 text-xs"></i>
+                <span class="text-gray-600">Height:</span>
+                <span class="stat-value" id="heightStat">0mm</span>
+            </div>
+
+            <div class="w-px h-8 bg-white/5 mx-2"></div>
+
+            <button onclick="openGridModal()" class="tool-btn" data-tooltip="Grid & Platform Settings">
+                <i class="fas fa-border-all"></i>
+            </button>
+
+            <button onclick="toggleGridLines()" class="tool-btn" id="gridToggleBtn" data-tooltip="Toggle Grid (H)">
+                <i class="fas fa-eye"></i>
+            </button>
+
+            <button onclick="resetView()" class="tool-btn" data-tooltip="Reset Camera">
+                <i class="fas fa-compress-arrows-alt"></i>
+            </button>
+
+            <button onclick="toggleSnap()" class="tool-btn active" id="snapBtn" data-tooltip="Snap to Grid (G)">
+                <i class="fas fa-magnet"></i>
+            </button>
+
+            <div class="w-px h-8 bg-white/5 mx-2"></div>
+
+            <button onclick="saveProject()" class="tool-btn" data-tooltip="Save Project (Ctrl+S)">
+                <i class="fas fa-save"></i>
+            </button>
+
+            <button onclick="validateAssignment()" class="hidden px-5 h-11 btn-primary rounded-xl font-medium text-sm transition-all flex items-center gap-2" id="validateBtn">
+                <i class="fas fa-check-circle text-xs"></i>
+                Submit
+            </button>
+        </div>
+    </header>
+
+    <!-- Assignment HUD -->
+    <div id="assignmentHUD" class="fixed top-20 right-4 z-40 hidden">
+        <div class="assignment-alert rounded-xl p-4 w-80 border-l-2 border-white/20">
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <div class="text-xs text-white/60 font-medium uppercase tracking-wider mb-1">Current Assignment</div>
+                    <h3 class="text-white font-bold text-sm tracking-tight" id="hudTitle">Bridge Challenge</h3>
+                </div>
+                <button onclick="clearAssignment()" class="text-gray-600 hover:text-white transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p class="text-gray-500 text-xs mb-3 line-clamp-2" id="hudDesc">Build requirements...</p>
+            <div class="space-y-2 mb-3" id="hudRequirements"></div>
+            <div class="progress-bar h-1.5 rounded-full overflow-hidden">
+                <div id="hudProgress" class="progress-fill h-full w-0 transition-all duration-500"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-gray-600 mt-1">
+                <span>Progress</span>
+                <span id="hudPercent" class="text-white/80">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Left Sidebar -->
+    <aside class="fixed left-4 top-20 bottom-4 w-72 rounded-2xl z-40 flex flex-col overflow-hidden glass-panel" id="leftPanel">
+        <div class="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
+
+        <div class="p-4 border-b border-white/5 relative">
+            <div class="flex mb-3">
+                <button onclick="setTab('bricks')" class="tab-btn active" id="tab-bricks">Bricks</button>
+                <button onclick="setTab('environment')" class="tab-btn" id="tab-environment">Nature</button>
+            </div>
+
+            <div id="modePanel">
+                <div class="flex gap-2">
+                    <button onclick="setMode('place')" class="tool-btn flex-1 active" id="mode-place">
+                        <i class="fas fa-cube"></i>
+                        <span class="shortcut-badge">B</span>
+                    </button>
+                    <button onclick="setMode('select')" class="tool-btn flex-1" id="mode-select">
+                        <i class="fas fa-mouse-pointer"></i>
+                    </button>
+                    <button onclick="setMode('paint')" class="tool-btn flex-1" id="mode-paint">
+                        <i class="fas fa-paint-brush"></i>
+                    </button>
+                    <button onclick="setMode('delete')" class="tool-btn flex-1" id="mode-delete">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+
+                <div id="selectionInfo" class="hidden mt-3 pt-3 border-t border-white/5">
+                    <div class="text-xs text-gray-600 mb-2">Selected: <span id="selCount" class="text-white font-bold">0</span></div>
+                    <div class="flex gap-2">
+                        <button onclick="deleteSelected()" class="flex-1 py-1.5 rounded-lg bg-red-500/10 text-red-400/80 text-xs hover:bg-red-500/20 transition-colors border border-red-500/20">
+                            <i class="fas fa-trash mr-1"></i>Delete
+                        </button>
+                        <button onclick="duplicateSelected()" class="flex-1 py-1.5 rounded-lg bg-white/5 text-white/80 text-xs hover:bg-white/10 transition-colors border border-white/10">
+                            <i class="fas fa-copy mr-1"></i>Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 relative" id="sidebarContent">
+
+            <!-- Bricks Panel -->
+            <div id="bricksPanel">
+                <div class="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">Brick Library</div>
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="piece-card active" onclick="selectPiece('1x1')" id="piece-1x1">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="w-3 h-3 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                            <div class="w-5 h-5 border border-gray-600 rounded bg-gray-800/50"></div>
+                        </div>
+                        <div class="text-xs font-medium text-gray-300">1 × 1</div>
+                    </div>
+                    <div class="piece-card" onclick="selectPiece('1x2')" id="piece-1x2">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="flex gap-1">
+                                <div class="w-2.5 h-2.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                            </div>
+                            <div class="w-8 h-4 border border-gray-600 rounded bg-gray-800/50"></div>
+                        </div>
+                        <div class="text-xs font-medium text-gray-300">1 × 2</div>
+                    </div>
+                    <div class="piece-card" onclick="selectPiece('2x2')" id="piece-2x2">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="grid grid-cols-2 gap-1">
+                                <div class="w-2.5 h-2.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                            </div>
+                            <div class="w-6 h-6 border border-gray-600 rounded bg-gray-800/50"></div>
+                        </div>
+                        <div class="text-xs font-medium text-gray-300">2 × 2</div>
+                    </div>
+                    <div class="piece-card" onclick="selectPiece('2x4')" id="piece-2x4">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="grid grid-cols-4 gap-0.5">
+                                <div class="w-1.5 h-1.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-gray-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"></div>
+                            </div>
+                            <div class="w-10 h-5 border border-gray-600 rounded bg-gray-800/50"></div>
+                        </div>
+                        <div class="text-xs font-medium text-gray-300">2 × 4</div>
+                    </div>
+                    <div class="piece-card" onclick="selectPiece('2x2plate')" id="piece-2x2plate">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="w-6 h-6 border border-gray-600 rounded bg-gray-800/30"></div>
+                        </div>
+                        <div class="text-xs font-medium text-gray-300">2 × 2 Plate</div>
+                    </div>
+                    <div class="piece-card" onclick="selectPiece('slope')" id="piece-slope">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="text-2xl text-gray-600" style="clip-path: polygon(0 100%, 50% 0, 100% 100%); background: currentColor; width: 24px; height: 16px;"></div>
+                        </div>
+                        <div class="text-xs font-medium text-gray-300">Slope</div>
+                    </div>
+                </div>
+
+                <div class="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">Material Color</div>
+                <div class="grid grid-cols-4 gap-3 p-3 rounded-xl bg-black/20 border border-white/5">
+                    <div class="color-swatch active bg-red-500" onclick="selectColor(0xef4444, this)" data-tooltip="Red"></div>
+                    <div class="color-swatch bg-blue-500" onclick="selectColor(0x3b82f6, this)" data-tooltip="Blue"></div>
+                    <div class="color-swatch bg-yellow-400" onclick="selectColor(0xfacc15, this)" data-tooltip="Yellow"></div>
+                    <div class="color-swatch bg-green-500" onclick="selectColor(0x22c55e, this)" data-tooltip="Green"></div>
+                    <div class="color-swatch bg-orange-500" onclick="selectColor(0xf97316, this)" data-tooltip="Orange"></div>
+                    <div class="color-swatch bg-gray-600" onclick="selectColor(0x475569, this)" data-tooltip="Dark Gray"></div>
+                    <div class="color-swatch bg-white" onclick="selectColor(0xf8fafc, this)" data-tooltip="White"></div>
+                    <div class="color-swatch bg-gray-900 border border-white/20" onclick="selectColor(0x0f172a, this)" data-tooltip="Black"></div>
+                </div>
+            </div>
+
+            <!-- Environment Panel -->
+            <div id="environmentPanel" class="hidden">
+                <div class="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">Nature & Decor</div>
+
+                <div class="grid grid-cols-3 gap-2 mb-6">
+                    <div class="env-card" onclick="selectEnvItem('tree_oak')" id="env-tree_oak">
+                        <div class="env-icon">🌳</div>
+                        <div class="text-[10px] text-gray-400 text-center">Oak Tree</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('tree_pine')" id="env-tree_pine">
+                        <div class="env-icon">🌲</div>
+                        <div class="text-[10px] text-gray-400 text-center">Pine Tree</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('tree_palm')" id="env-tree_palm">
+                        <div class="env-icon">🌴</div>
+                        <div class="text-[10px] text-gray-400 text-center">Palm Tree</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('bush')" id="env-bush">
+                        <div class="env-icon">🌿</div>
+                        <div class="text-[10px] text-gray-400 text-center">Bush</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('flower_red')" id="env-flower_red">
+                        <div class="env-icon">🌹</div>
+                        <div class="text-[10px] text-gray-400 text-center">Red Flower</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('flower_yellow')" id="env-flower_yellow">
+                        <div class="env-icon">🌻</div>
+                        <div class="text-[10px] text-gray-400 text-center">Sunflower</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('rock')" id="env-rock">
+                        <div class="env-icon">🪨</div>
+                        <div class="text-[10px] text-gray-400 text-center">Rock</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('bench')" id="env-bench">
+                        <div class="env-icon">🪑</div>
+                        <div class="text-[10px] text-gray-400 text-center">Bench</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('lamp')" id="env-lamp">
+                        <div class="env-icon">💡</div>
+                        <div class="text-[10px] text-gray-400 text-center">Lamp Post</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('fence')" id="env-fence">
+                        <div class="env-icon">🚧</div>
+                        <div class="text-[10px] text-gray-400 text-center">Fence</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('fountain')" id="env-fountain">
+                        <div class="env-icon">⛲</div>
+                        <div class="text-[10px] text-gray-400 text-center">Fountain</div>
+                    </div>
+                    <div class="env-card" onclick="selectEnvItem('path')" id="env-path">
+                        <div class="env-icon">🟫</div>
+                        <div class="text-[10px] text-gray-400 text-center">Path</div>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-xl bg-black/20 border border-white/5">
+                    <div class="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Environment items don't count toward brick limit</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-white/5 bg-black/20 relative">
+            <div class="text-[10px] text-gray-600 space-y-1">
+                <div class="flex justify-between">
+                    <span>Coords:</span>
+                    <span class="font-mono text-gray-400" id="coordDisplay">0, 0, 0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Snap:</span>
+                    <span class="text-white" id="snapStatus">ON</span>
+                </div>
+                <div class="flex justify-between mt-2 pt-2 border-t border-white/5">
+                    <span class="text-gray-500">Press B to drop</span>
+                    <span class="text-white/60">Space</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Right Sidebar (Properties) -->
+    <aside class="glass-panel fixed right-4 top-20 bottom-4 w-80 rounded-2xl z-40 flex flex-col overflow-hidden" id="rightPanel">
+        <div class="p-5 border-b border-white/5 relative">
+            <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+            <h2 class="font-bold text-sm uppercase tracking-wider text-gray-500 flex items-center gap-2">
+                <i class="fas fa-sliders-h text-white/60"></i>
+                Properties
+            </h2>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-5 space-y-6 relative">
+            <!-- Transform -->
+            <div>
+                <div class="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">Transform (Selected)</div>
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-mono text-red-400/80 w-4">X</span>
+                        <input type="number" id="propX" onchange="updateSelectedPos('x', this.value)" 
+                            class="flex-1 rounded-lg px-3 py-2 text-sm" placeholder="0">
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-mono text-green-400/80 w-4">Y</span>
+                        <input type="number" id="propY" onchange="updateSelectedPos('y', this.value)" 
+                            class="flex-1 rounded-lg px-3 py-2 text-sm" placeholder="0">
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-mono text-blue-400/80 w-4">Z</span>
+                        <input type="number" id="propZ" onchange="updateSelectedPos('z', this.value)" 
+                            class="flex-1 rounded-lg px-3 py-2 text-sm" placeholder="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rotation -->
+            <div>
+                <div class="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">Rotation</div>
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="setRotation(0)" class="rot-btn active py-2 rounded-lg text-xs font-medium" id="rot-0">0°</button>
+                    <button onclick="setRotation(90)" class="rot-btn py-2 rounded-lg text-xs font-medium" id="rot-90">90°</button>
+                    <button onclick="setRotation(180)" class="rot-btn py-2 rounded-lg text-xs font-medium" id="rot-180">180°</button>
+                    <button onclick="setRotation(270)" class="rot-btn py-2 rounded-lg text-xs font-medium" id="rot-270">270°</button>
+                </div>
+            </div>
+
+            <!-- Material -->
+            <div>
+                <div class="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">Material Finish</div>
+                <div class="space-y-2">
+                    <button onclick="setMaterial('glossy')" class="w-full p-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left flex items-center gap-3 active" id="mat-glossy">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-700 to-black shadow-lg"></div>
+                        <div>
+                            <div class="text-sm font-medium text-white">Glossy Black</div>
+                            <div class="text-xs text-gray-600">High reflectivity finish</div>
+                        </div>
+                    </button>
+                    <button onclick="setMaterial('matte')" class="w-full p-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left flex items-center gap-3" id="mat-matte">
+                        <div class="w-8 h-8 rounded-lg bg-gray-700 shadow-lg"></div>
+                        <div>
+                            <div class="text-sm font-medium text-white">Matte</div>
+                            <div class="text-xs text-gray-600">Diffuse finish</div>
+                        </div>
+                    </button>
+                    <button onclick="setMaterial('metallic')" class="w-full p-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left flex items-center gap-3" id="mat-metallic">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-400 to-gray-600 shadow-lg"></div>
+                        <div>
+                            <div class="text-sm font-medium text-white">Metallic</div>
+                            <div class="text-xs text-gray-600">Chrome finish</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Layer Control -->
+            <div>
+                <div class="text-xs font-medium text-gray-600 uppercase tracking-wider mb-3">Layer Control</div>
+                <div class="flex gap-2">
+                    <button onclick="moveLayer('up')" class="flex-1 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-xs">
+                        <i class="fas fa-arrow-up mr-1"></i>Up
+                    </button>
+                    <button onclick="moveLayer('down')" class="flex-1 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-xs">
+                        <i class="fas fa-arrow-down mr-1"></i>Down
+                    </button>
+                    <button onclick="moveLayer('ground')" class="flex-1 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-xs">
+                        <i class="fas fa-compress mr-1"></i>Ground
+                    </button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Instructions Overlay -->
+    <div id="instructions" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-30 bg-black/80 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-xs text-gray-400 flex items-center gap-4">
+        <span><span class="text-white font-bold">B</span> to Drop Block</span>
+        <span><span class="text-white font-bold">Click</span> to Place</span>
+        <span><span class="text-white font-bold">Drag</span> to Select</span>
+        <span><span class="text-white font-bold">Del</span> to Remove</span>
+        <span><span class="text-white font-bold">G</span> Toggle Snap</span>
+        <button onclick="toggleInstructions()" class="ml-2 text-gray-600 hover:text-white">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <script>
+
+        // Game State
+        let scene, camera, renderer, controls, raycaster, mouse;
+        let gridHelper, plane, groundPlane;
+        let bricks = [];
+        let selectedBricks = [];
+        let currentPiece = '1x1';
+        let currentColor = 0xef4444;
+        let currentMaterial = 'glossy';
+        let currentRotation = 0;
+        let snapToGrid = true;
+        let gridSize = 20;
+        let brickSize = 4;
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let selectionBox = document.getElementById('selectionBox');
+        let mode = 'place'; // place, select, paint, delete
+        let undoStack = [];
+        let redoStack = [];
+        let ghostBrick = null;
+        let gridVisible = true;
+        let currentGridColor = 0x999999;
+        let currentGridOpacity = 0.3;
+        let currentPlatformColor = 0xe5e5e5;
+        let envItems = [];
+        let currentEnvItem = null;
+        let isShiftPressed = false;
+
+        // Assignment State
+        let currentAssignment = null;
+
+        // Initialize
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            scene.fog = new THREE.Fog(0x0a0a0a, 50, 200);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(40, 40, 40);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.1;
+            controls.minDistance = 10;
+            controls.maxDistance = 150;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(50, 80, 30);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.near = 0.1;
+            dirLight.shadow.camera.far = 200;
+            dirLight.shadow.camera.left = -50;
+            dirLight.shadow.camera.right = 50;
+            dirLight.shadow.camera.top = 50;
+            dirLight.shadow.camera.bottom = -50;
+            scene.add(dirLight);
+
+            // Fill light
+            const fillLight = new THREE.DirectionalLight(0x4444ff, 0.2);
+            fillLight.position.set(-30, 20, -30);
+            scene.add(fillLight);
+
+            // Raycaster
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Create grid and platform
+            createGrid();
+            createPlatform();
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+
+            // Tooltip listeners
+            setupTooltips();
+
+            // Create ghost brick
+            createGhostBrick();
+
+            // Start render loop
+            animate();
+
+            // Save initial state
+            saveState();
+        }
+
+        function createGrid() {
+            if (gridHelper) scene.remove(gridHelper);
+
+            gridHelper = new THREE.GridHelper(gridSize * brickSize, gridSize, currentGridColor, currentGridColor);
+            gridHelper.material.opacity = currentGridOpacity;
+            gridHelper.material.transparent = true;
+            gridHelper.visible = gridVisible;
+            scene.add(gridHelper);
+        }
+
+        function createPlatform() {
+            if (groundPlane) scene.remove(groundPlane);
+
+            const geometry = new THREE.PlaneGeometry(gridSize * brickSize, gridSize * brickSize);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: currentPlatformColor,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            groundPlane = new THREE.Mesh(geometry, material);
+            groundPlane.rotation.x = -Math.PI / 2;
+            groundPlane.position.y = -0.1;
+            groundPlane.receiveShadow = true;
+            groundPlane.name = 'ground';
+            scene.add(groundPlane);
+        }
+
+        function createGhostBrick() {
+            const geometry = new THREE.BoxGeometry(brickSize, brickSize, brickSize);
+            const material = new THREE.MeshStandardMaterial({
+                color: currentColor,
+                transparent: true,
+                opacity: 0.3,
+                roughness: 0.1,
+                metalness: 0.9
+            });
+            ghostBrick = new THREE.Mesh(geometry, material);
+            ghostBrick.visible = false;
+            scene.add(ghostBrick);
+        }
+
+        function updateGhostBrick() {
+            if (!ghostBrick) return;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects([...bricks.map(b => b.mesh), groundPlane]);
+
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                const point = intersect.point;
+                const normal = intersect.face.normal;
+
+                let x, y, z;
+
+                if (snapToGrid) {
+                    if (intersect.object === groundPlane || normal.y === 1) {
+                        // Placing on top
+                        x = Math.round(point.x / brickSize) * brickSize;
+                        y = Math.max(0, Math.round(point.y / brickSize)) * brickSize + brickSize/2;
+                        z = Math.round(point.z / brickSize) * brickSize;
+                    } else if (intersect.object !== groundPlane) {
+                        // Placing on side of existing brick
+                        x = Math.round((point.x + normal.x * brickSize/2) / brickSize) * brickSize;
+                        y = Math.round((point.y + normal.y * brickSize/2) / brickSize) * brickSize;
+                        z = Math.round((point.z + normal.z * brickSize/2) / brickSize) * brickSize;
+                    }
+                } else {
+                    x = point.x;
+                    y = point.y + brickSize/2;
+                    z = point.z;
+                }
+
+                ghostBrick.position.set(x, y, z);
+                ghostBrick.visible = true;
+
+                // Update coordinate display
+                document.getElementById('coordDisplay').textContent = 
+                    Math.round(x) + ', ' + Math.round(y) + ', ' + Math.round(z);
+            } else {
+                ghostBrick.visible = false;
+            }
+        }
+
+        function getBrickDimensions(type) {
+            const dims = {
+                '1x1': [1, 1],
+                '1x2': [1, 2],
+                '2x2': [2, 2],
+                '2x4': [2, 4],
+                '2x2plate': [2, 2],
+                'slope': [2, 2]
+            };
+            return dims[type] || [1, 1];
+        }
+
+        function createBrickGeometry(type) {
+            const [w, d] = getBrickDimensions(type);
+            const geometry = new THREE.BoxGeometry(w * brickSize, brickSize, d * brickSize);
+
+            if (type === 'slope') {
+                // Create slope geometry
+                const positions = geometry.attributes.position.array;
+                for (let i = 0; i < positions.length; i += 3) {
+                    if (positions[i + 1] > 0) { // Top vertices
+                        if (positions[i + 2] > 0) { // Front
+                            positions[i + 1] -= brickSize * 0.5;
+                        }
+                    }
+                }
+                geometry.computeVertexNormals();
+            }
+
+            return geometry;
+        }
+
+        function createBrickMaterial(color, materialType) {
+            let material;
+
+            switch(materialType) {
+                case 'glossy':
+                    material = new THREE.MeshPhysicalMaterial({
+                        color: color,
+                        roughness: 0.05,
+                        metalness: 0.1,
+                        clearcoat: 1.0,
+                        clearcoatRoughness: 0.05,
+                        reflectivity: 1.0
+                    });
+                    break;
+                case 'metallic':
+                    material = new THREE.MeshStandardMaterial({
+                        color: color,
+                        roughness: 0.2,
+                        metalness: 0.9
+                    });
+                    break;
+                case 'matte':
+                default:
+                    material = new THREE.MeshStandardMaterial({
+                        color: color,
+                        roughness: 0.8,
+                        metalness: 0.0
+                    });
+            }
+
+            return material;
+        }
+
+        function placeBrick(x, y, z, type = currentPiece, color = currentColor, rotation = currentRotation, material = currentMaterial) {
+            // Check brick limit
+            if (currentAssignment && bricks.length >= currentAssignment.maxBricks) {
+                showToast('Brick limit reached!');
+                return null;
+            }
+
+            const geometry = createBrickGeometry(type);
+            const mat = createBrickMaterial(color, material);
+            const mesh = new THREE.Mesh(geometry, mat);
+
+            mesh.position.set(x, y, z);
+            mesh.rotation.y = rotation * Math.PI / 180;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { type, color, material, id: Date.now() + Math.random() };
+
+            scene.add(mesh);
+            bricks.push({ mesh, data: mesh.userData });
+
+            updateStats();
+            updateHUD();
+            saveState();
+
+            return mesh;
+        }
+
+        function createEnvironmentItem(type, x, z) {
+            let mesh;
+
+            switch(type) {
+                case 'tree_oak':
+                    mesh = createTree(0x228B22, 0x8B4513);
+                    break;
+                case 'tree_pine':
+                    mesh = createPineTree();
+                    break;
+                case 'tree_palm':
+                    mesh = createPalmTree();
+                    break;
+                case 'bush':
+                    mesh = createBush();
+                    break;
+                case 'flower_red':
+                    mesh = createFlower(0xff0000);
+                    break;
+                case 'flower_yellow':
+                    mesh = createFlower(0xffd700);
+                    break;
+                case 'rock':
+                    mesh = createRock();
+                    break;
+                case 'bench':
+                    mesh = createBench();
+                    break;
+                case 'lamp':
+                    mesh = createLamp();
+                    break;
+                case 'fence':
+                    mesh = createFence();
+                    break;
+                case 'fountain':
+                    mesh = createFountain();
+                    break;
+                case 'path':
+                    mesh = createPath();
+                    break;
+            }
+
+            if (mesh) {
+                mesh.position.set(x, 0, z);
+                mesh.userData = { type, isEnv: true, id: Date.now() + Math.random() };
+                scene.add(mesh);
+                envItems.push({ mesh, data: mesh.userData });
+                saveState();
+            }
+        }
+
+        function createTree(leafColor, trunkColor) {
+            const group = new THREE.Group();
+
+            // Trunk
+            const trunkGeom = new THREE.CylinderGeometry(0.5, 0.7, 4, 8);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: trunkColor, roughness: 0.9 });
+            const trunk = new THREE.Mesh(trunkGeom, trunkMat);
+            trunk.position.y = 2;
+            trunk.castShadow = true;
+            group.add(trunk);
+
+            // Leaves
+            const leavesGeom = new THREE.DodecahedronGeometry(2.5);
+            const leavesMat = new THREE.MeshStandardMaterial({ color: leafColor, roughness: 0.8 });
+            const leaves = new THREE.Mesh(leavesGeom, leavesMat);
+            leaves.position.y = 5;
+            leaves.castShadow = true;
+            group.add(leaves);
+
+            return group;
+        }
+
+        function createPineTree() {
+            const group = new THREE.Group();
+
+            const trunkGeom = new THREE.CylinderGeometry(0.4, 0.6, 3, 8);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 });
+            const trunk = new THREE.Mesh(trunkGeom, trunkMat);
+            trunk.position.y = 1.5;
+            trunk.castShadow = true;
+            group.add(trunk);
+
+            const leavesGeom = new THREE.ConeGeometry(2.5, 6, 8);
+            const leavesMat = new THREE.MeshStandardMaterial({ color: 0x0f5f0f, roughness: 0.8 });
+            const leaves = new THREE.Mesh(leavesGeom, leavesMat);
+            leaves.position.y = 4.5;
+            leaves.castShadow = true;
+            group.add(leaves);
+
+            return group;
+        }
+
+        function createPalmTree() {
+            const group = new THREE.Group();
+
+            const trunkGeom = new THREE.CylinderGeometry(0.3, 0.4, 6, 8);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.8 });
+            const trunk = new THREE.Mesh(trunkGeom, trunkMat);
+            trunk.position.y = 3;
+            trunk.castShadow = true;
+            group.add(trunk);
+
+            // Leaves
+            for (let i = 0; i < 6; i++) {
+                const leafGeom = new THREE.BoxGeometry(0.2, 3, 1);
+                const leafMat = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+                const leaf = new THREE.Mesh(leafGeom, leafMat);
+                leaf.position.y = 6;
+                leaf.rotation.z = Math.PI / 4;
+                leaf.rotation.y = (i / 6) * Math.PI * 2;
+                leaf.translateY(1.5);
+                group.add(leaf);
+            }
+
+            return group;
+        }
+
+        function createBush() {
+            const geometry = new THREE.DodecahedronGeometry(1.5);
+            const material = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.9 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.y = 1;
+            mesh.castShadow = true;
+            return mesh;
+        }
+
+        function createFlower(color) {
+            const group = new THREE.Group();
+
+            const stemGeom = new THREE.CylinderGeometry(0.05, 0.05, 1, 4);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            stem.position.y = 0.5;
+            group.add(stem);
+
+            const flowerGeom = new THREE.SphereGeometry(0.3, 6, 4);
+            const flowerMat = new THREE.MeshStandardMaterial({ color: color });
+            const flower = new THREE.Mesh(flowerGeom, flowerMat);
+            flower.position.y = 1;
+            group.add(flower);
+
+            return group;
+        }
+
+        function createRock() {
+            const geometry = new THREE.DodecahedronGeometry(Math.random() * 0.5 + 0.8, 0);
+            const material = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.9 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.y = 0.5;
+            mesh.castShadow = true;
+            mesh.rotation.set(Math.random(), Math.random(), Math.random());
+            return mesh;
+        }
+
+        function createBench() {
+            const group = new THREE.Group();
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+
+            // Seat
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 1), woodMat);
+            seat.position.y = 1;
+            group.add(seat);
+
+            // Legs
+            for (let x of [-1.2, 1.2]) {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1, 0.8), woodMat);
+                leg.position.set(x, 0.5, 0);
+                group.add(leg);
+            }
+
+            return group;
+        }
+
+        function createLamp() {
+            const group = new THREE.Group();
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8 });
+
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4, 8), metalMat);
+            pole.position.y = 2;
+            group.add(pole);
+
+            const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshStandardMaterial({ color: 0xffffaa, emissive: 0xffffaa, emissiveIntensity: 0.5 }));
+            lamp.position.y = 4;
+            group.add(lamp);
+
+            return group;
+        }
+
+        function createFence() {
+            const group = new THREE.Group();
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+
+            for (let x of [-1, 1]) {
+                const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2, 0.2), woodMat);
+                post.position.set(x, 1, 0);
+                group.add(post);
+            }
+
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 0.1), woodMat);
+            rail.position.set(0, 1.5, 0);
+            group.add(rail);
+
+            const rail2 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 0.1), woodMat);
+            rail2.position.set(0, 0.8, 0);
+            group.add(rail2);
+
+            return group;
+        }
+
+        function createFountain() {
+            const group = new THREE.Group();
+            const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+            const waterMat = new THREE.MeshPhysicalMaterial({ color: 0x00ffff, transparent: true, opacity: 0.7, transmission: 0.5 });
+
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 1, 16), stoneMat);
+            base.position.y = 0.5;
+            group.add(base);
+
+            const water = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.8, 16), waterMat);
+            water.position.y = 0.6;
+            group.add(water);
+
+            return group;
+        }
+
+        function createPath() {
+            const geometry = new THREE.BoxGeometry(4, 0.1, 4);
+            const material = new THREE.MeshStandardMaterial({ color: 0x999999 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.y = 0.05;
+            return mesh;
+        }
+
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            if (mode === 'place' && !currentEnvItem) {
+                updateGhostBrick();
+            }
+
+            if (isDragging && mode === 'select') {
+                updateSelectionBox(event);
+            }
+        }
+
+        function onMouseDown(event) {
+            if (event.target.closest('aside') || event.target.closest('header') || event.target.closest('.panel-toggle')) return;
+
+            if (event.button === 0) { // Left click
+                if (mode === 'select') {
+                    isDragging = true;
+                    dragStart.x = event.clientX;
+                    dragStart.y = event.clientY;
+                    selectionBox.style.display = 'block';
+                    selectionBox.style.left = dragStart.x + 'px';
+                    selectionBox.style.top = dragStart.y + 'px';
+                } else if (mode === 'place') {
+                    if (currentEnvItem) {
+                        placeEnvironmentItem();
+                    } else {
+                        placeBrickFromGhost();
+                    }
+                } else if (mode === 'delete') {
+                    deleteAtMouse();
+                } else if (mode === 'paint') {
+                    paintAtMouse();
+                }
+            }
+        }
+
+        function onMouseUp(event) {
+            if (isDragging && mode === 'select') {
+                isDragging = false;
+                selectionBox.style.display = 'none';
+                selectBricksInBox();
+            }
+        }
+
+        function updateSelectionBox(event) {
+            const x = Math.min(dragStart.x, event.clientX);
+            const y = Math.min(dragStart.y, event.clientY);
+            const w = Math.abs(event.clientX - dragStart.x);
+            const h = Math.abs(event.clientY - dragStart.y);
+
+            selectionBox.style.left = x + 'px';
+            selectionBox.style.top = y + 'px';
+            selectionBox.style.width = w + 'px';
+            selectionBox.style.height = h + 'px';
+        }
+
+        function selectBricksInBox() {
+            const box = selectionBox.getBoundingClientRect();
+            selectedBricks = [];
+
+            bricks.forEach(brick => {
+                const screenPos = brick.mesh.position.clone().project(camera);
+                const x = (screenPos.x + 1) / 2 * window.innerWidth;
+                const y = -(screenPos.y - 1) / 2 * window.innerHeight;
+
+                if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) {
+                    selectedBricks.push(brick);
+                    highlightBrick(brick.mesh);
+                } else {
+                    unhighlightBrick(brick.mesh);
+                }
+            });
+
+            updateSelectionUI();
+        }
+
+        function highlightBrick(mesh) {
+            if (mesh.material.emissive) {
+                mesh.currentHex = mesh.material.emissive.getHex();
+                mesh.material.emissive.setHex(0x444444);
+            }
+        }
+
+        function unhighlightBrick(mesh) {
+            if (mesh.currentHex !== undefined && mesh.material.emissive) {
+                mesh.material.emissive.setHex(mesh.currentHex);
+            } else if (mesh.material.emissive) {
+                mesh.material.emissive.setHex(0x000000);
+            }
+        }
+
+        function updateSelectionUI() {
+            const info = document.getElementById('selectionInfo');
+            const count = document.getElementById('selCount');
+
+            if (selectedBricks.length > 0) {
+                info.classList.remove('hidden');
+                count.textContent = selectedBricks.length;
+
+                // Update properties panel
+                if (selectedBricks.length === 1) {
+                    const brick = selectedBricks[0];
+                    document.getElementById('propX').value = Math.round(brick.mesh.position.x);
+                    document.getElementById('propY').value = Math.round(brick.mesh.position.y);
+                    document.getElementById('propZ').value = Math.round(brick.mesh.position.z);
+                }
+            } else {
+                info.classList.add('hidden');
+            }
+        }
+
+        function placeBrickFromGhost() {
+            if (!ghostBrick || !ghostBrick.visible) return;
+
+            const pos = ghostBrick.position;
+            placeBrick(pos.x, pos.y, pos.z, currentPiece, currentColor, currentRotation, currentMaterial);
+        }
+
+        function placeEnvironmentItem() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(groundPlane);
+
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                const x = Math.round(point.x / brickSize) * brickSize;
+                const z = Math.round(point.z / brickSize) * brickSize;
+                createEnvironmentItem(currentEnvItem, x, z);
+            }
+        }
+
+        function deleteAtMouse() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(bricks.map(b => b.mesh));
+
+            if (intersects.length > 0) {
+                const mesh = intersects[0].object;
+                const index = bricks.findIndex(b => b.mesh === mesh);
+                if (index > -1) {
+                    scene.remove(mesh);
+                    bricks.splice(index, 1);
+                    updateStats();
+                    saveState();
+                }
+            }
+        }
+
+        function paintAtMouse() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(bricks.map(b => b.mesh));
+
+            if (intersects.length > 0) {
+                const mesh = intersects[0].object;
+                mesh.material.color.setHex(currentColor);
+                mesh.userData.color = currentColor;
+                saveState();
+            }
+        }
+
+        function onKeyDown(event) {
+            const key = event.key.toLowerCase();
+
+            if (key === 'b' || key === ' ') {
+                event.preventDefault();
+                if (mode === 'place') {
+                    if (currentEnvItem) {
+                        placeEnvironmentItem();
+                    } else {
+                        placeBrickFromGhost();
+                    }
+                }
+            } else if (key === 'g') {
+                toggleSnap();
+            } else if (key === 'h') {
+                toggleGridLines();
+            } else if (key === 'delete' || key === 'backspace') {
+                if (selectedBricks.length > 0) {
+                    deleteSelected();
+                }
+            } else if (event.ctrlKey && key === 'z') {
+                event.preventDefault();
+                undo();
+            } else if (event.ctrlKey && (key === 'y' || key === 'z' && event.shiftKey)) {
+                event.preventDefault();
+                redo();
+            } else if (event.ctrlKey && key === 's') {
+                event.preventDefault();
+                saveProject();
+            } else if (key === 'shift') {
+                isShiftPressed = true;
+            } else if (key === '1') {
+                selectPiece('1x1');
+            } else if (key === '2') {
+                selectPiece('1x2');
+            } else if (key === '3') {
+                selectPiece('2x2');
+            } else if (key === '4') {
+                selectPiece('2x4');
+            }
+        }
+
+        function onKeyUp(event) {
+            if (event.key === 'Shift') {
+                isShiftPressed = false;
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // UI Functions
+        function setTab(tab) {
+            document.getElementById('tab-bricks').classList.toggle('active', tab === 'bricks');
+            document.getElementById('tab-environment').classList.toggle('active', tab === 'environment');
+            document.getElementById('bricksPanel').classList.toggle('hidden', tab !== 'bricks');
+            document.getElementById('environmentPanel').classList.toggle('hidden', tab !== 'environment');
+
+            if (tab === 'environment') {
+                currentEnvItem = 'tree_oak';
+                document.getElementById('env-tree_oak').classList.add('active');
+            } else {
+                currentEnvItem = null;
+                document.querySelectorAll('.env-card').forEach(c => c.classList.remove('active'));
+            }
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            ['place', 'select', 'paint', 'delete'].forEach(m => {
+                document.getElementById('mode-' + m).classList.toggle('active', m === mode);
+            });
+
+            if (ghostBrick) {
+                ghostBrick.visible = (mode === 'place' && !currentEnvItem);
+            }
+
+            if (mode !== 'select') {
+                selectedBricks.forEach(b => unhighlightBrick(b.mesh));
+                selectedBricks = [];
+                updateSelectionUI();
+            }
+        }
+
+        function selectPiece(type) {
+            currentPiece = type;
+            document.querySelectorAll('.piece-card').forEach(c => c.classList.remove('active'));
+            document.getElementById('piece-' + type).classList.add('active');
+
+            // Update ghost brick geometry
+            if (ghostBrick) {
+                scene.remove(ghostBrick);
+                const geometry = createBrickGeometry(type);
+                const material = new THREE.MeshStandardMaterial({
+                    color: currentColor,
+                    transparent: true,
+                    opacity: 0.3,
+                    roughness: 0.1,
+                    metalness: 0.9
+                });
+                ghostBrick = new THREE.Mesh(geometry, material);
+                ghostBrick.visible = false;
+                scene.add(ghostBrick);
+            }
+
+            currentEnvItem = null;
+            document.querySelectorAll('.env-card').forEach(c => c.classList.remove('active'));
+        }
+
+        function selectEnvItem(type) {
+            currentEnvItem = type;
+            document.querySelectorAll('.env-card').forEach(c => c.classList.remove('active'));
+            document.getElementById('env-' + type).classList.add('active');
+
+            if (ghostBrick) {
+                ghostBrick.visible = false;
+            }
+        }
+
+        function selectColor(color, element) {
+            currentColor = color;
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+            element.classList.add('active');
+
+            if (ghostBrick) {
+                ghostBrick.material.color.setHex(color);
+            }
+        }
+
+        function setMaterial(mat) {
+            currentMaterial = mat;
+            document.querySelectorAll('[id^="mat-"]').forEach(m => m.classList.remove('active'));
+            document.getElementById('mat-' + mat).classList.add('active');
+        }
+
+        function setRotation(deg) {
+            currentRotation = deg;
+            document.querySelectorAll('.rot-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('rot-' + deg).classList.add('active');
+
+            if (ghostBrick) {
+                ghostBrick.rotation.y = deg * Math.PI / 180;
+            }
+        }
+
+        function toggleSnap() {
+            snapToGrid = !snapToGrid;
+            document.getElementById('snapBtn').classList.toggle('active', snapToGrid);
+            document.getElementById('snapStatus').textContent = snapToGrid ? 'ON' : 'OFF';
+        }
+
+        function toggleGridLines() {
+            gridVisible = !gridVisible;
+            if (gridHelper) gridHelper.visible = gridVisible;
+            document.getElementById('gridToggleBtn').classList.toggle('active', gridVisible);
+
+            const toggle = document.getElementById('gridLinesToggle');
+            if (toggle) {
+                toggle.style.right = gridVisible ? '4px' : '28px';
+                toggle.parentElement.style.background = gridVisible ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)';
+            }
+        }
+
+        function setGridColor(color, element) {
+            currentGridColor = color;
+            if (gridHelper) {
+                gridHelper.material.color.setHex(color);
+            }
+            document.querySelectorAll('.grid-swatch').forEach(s => s.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function setGridOpacity(value) {
+            currentGridOpacity = value / 100;
+            if (gridHelper) {
+                gridHelper.material.opacity = currentGridOpacity;
+            }
+            document.getElementById('gridOpacityValue').textContent = value + '%';
+        }
+
+        function setPlatformColor(color, element) {
+            currentPlatformColor = color;
+            if (groundPlane) {
+                groundPlane.material.color.setHex(color);
+            }
+            document.querySelectorAll('.platform-swatch').forEach(s => s.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function openGridModal() {
+            document.getElementById('gridModal').classList.remove('hidden');
+        }
+
+        function closeGridModal() {
+            document.getElementById('gridModal').classList.add('hidden');
+        }
+
+        function resetView() {
+            camera.position.set(40, 40, 40);
+            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+
+        // Panel Toggle Functions
+        let leftPanelVisible = true;
+        let rightPanelVisible = true;
+
+        function toggleLeftPanel() {
+            leftPanelVisible = !leftPanelVisible;
+            const panel = document.getElementById('leftPanel');
+            const toggle = document.getElementById('leftToggle');
+
+            if (leftPanelVisible) {
+                panel.style.transform = 'translateX(0)';
+                panel.style.opacity = '1';
+                toggle.style.left = '288px';
+                toggle.classList.remove('hidden-panel');
+                toggle.innerHTML = '<i class="fas fa-chevron-left"></i>';
+            } else {
+                panel.style.transform = 'translateX(-120%)';
+                panel.style.opacity = '0';
+                toggle.style.left = '0';
+                toggle.classList.add('hidden-panel');
+                toggle.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            }
+        }
+
+        function toggleRightPanel() {
+            rightPanelVisible = !rightPanelVisible;
+            const panel = document.getElementById('rightPanel');
+            const toggle = document.getElementById('rightToggle');
+
+            if (rightPanelVisible) {
+                panel.style.transform = 'translateX(0)';
+                panel.style.opacity = '1';
+                toggle.style.right = '336px';
+                toggle.classList.remove('hidden-panel');
+                toggle.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            } else {
+                panel.style.transform = 'translateX(120%)';
+                panel.style.opacity = '0';
+                toggle.style.right = '0';
+                toggle.classList.add('hidden-panel');
+                toggle.innerHTML = '<i class="fas fa-chevron-left"></i>';
+            }
+        }
+
+        function deleteSelected() {
+            selectedBricks.forEach(brick => {
+                scene.remove(brick.mesh);
+                const index = bricks.indexOf(brick);
+                if (index > -1) bricks.splice(index, 1);
+            });
+            selectedBricks = [];
+            updateSelectionUI();
+            updateStats();
+            saveState();
+        }
+
+        function duplicateSelected() {
+            const newBricks = [];
+            selectedBricks.forEach(brick => {
+                const mesh = brick.mesh;
+                const newBrick = placeBrick(
+                    mesh.position.x + brickSize,
+                    mesh.position.y,
+                    mesh.position.z,
+                    mesh.userData.type,
+                    mesh.userData.color,
+                    mesh.rotation.y * 180 / Math.PI,
+                    mesh.userData.material
+                );
+                if (newBrick) newBricks.push(newBrick);
+            });
+
+            if (newBricks.length > 0) {
+                selectedBricks.forEach(b => unhighlightBrick(b.mesh));
+                selectedBricks = newBricks.map(mesh => ({ mesh, data: mesh.userData }));
+                selectedBricks.forEach(b => highlightBrick(b.mesh));
+                updateSelectionUI();
+            }
+        }
+
+        function updateSelectedPos(axis, value) {
+            if (selectedBricks.length === 1) {
+                const brick = selectedBricks[0].mesh;
+                brick.position[axis] = parseFloat(value);
+                saveState();
+            }
+        }
+
+        function moveLayer(direction) {
+            if (selectedBricks.length === 0) return;
+
+            selectedBricks.forEach(brick => {
+                const mesh = brick.mesh;
+                if (direction === 'up') {
+                    mesh.position.y += brickSize;
+                } else if (direction === 'down') {
+                    mesh.position.y = Math.max(brickSize/2, mesh.position.y - brickSize);
+                } else if (direction === 'ground') {
+                    mesh.position.y = brickSize/2;
+                }
+            });
+
+            if (selectedBricks.length === 1) {
+                document.getElementById('propY').value = Math.round(selectedBricks[0].mesh.position.y);
+            }
+            saveState();
+        }
+
+        // Undo/Redo System
+        function saveState() {
+            const state = {
+                bricks: bricks.map(b => ({
+                    x: b.mesh.position.x,
+                    y: b.mesh.position.y,
+                    z: b.mesh.position.z,
+                    type: b.data.type,
+                    color: b.data.color,
+                    rotation: b.mesh.rotation.y,
+                    material: b.data.material
+                })),
+                envItems: envItems.map(e => ({
+                    x: e.mesh.position.x,
+                    z: e.mesh.position.z,
+                    type: e.data.type
+                }))
+            };
+
+            undoStack.push(JSON.stringify(state));
+            if (undoStack.length > 20) undoStack.shift();
+            redoStack = [];
+
+            updateUndoRedoButtons();
+        }
+
+        function undo() {
+            if (undoStack.length <= 1) return;
+
+            redoStack.push(undoStack.pop());
+            const state = JSON.parse(undoStack[undoStack.length - 1]);
+            restoreState(state);
+            updateUndoRedoButtons();
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+
+            const stateStr = redoStack.pop();
+            undoStack.push(stateStr);
+            const state = JSON.parse(stateStr);
+            restoreState(state);
+            updateUndoRedoButtons();
+        }
+
+        function restoreState(state) {
+            // Clear current
+            bricks.forEach(b => scene.remove(b.mesh));
+            envItems.forEach(e => scene.remove(e.mesh));
+            bricks = [];
+            envItems = [];
+
+            // Restore bricks
+            state.bricks.forEach(b => {
+                placeBrick(b.x, b.y, b.z, b.type, b.color, b.rotation * 180 / Math.PI, b.material);
+            });
+
+            // Restore environment
+            if (state.envItems) {
+                state.envItems.forEach(e => {
+                    createEnvironmentItem(e.type, e.x, e.z);
+                });
+            }
+        }
+
+        function updateUndoRedoButtons() {
+            document.getElementById('undoBtn').classList.toggle('active', undoStack.length > 1);
+            document.getElementById('redoBtn').classList.toggle('active', redoStack.length > 0);
+        }
+
+        // Stats and HUD
+        function updateStats() {
+            document.getElementById('brickCount').textContent = bricks.length;
+
+            let maxHeight = 0;
+            bricks.forEach(b => {
+                const h = b.mesh.position.y + brickSize/2;
+                if (h > maxHeight) maxHeight = h;
+            });
+            document.getElementById('heightStat').textContent = Math.round(maxHeight) + 'mm';
+        }
+
+        function updateHUD() {
+            if (!currentAssignment) return;
+
+            const maxBricks = currentAssignment.maxBricks;
+            const used = bricks.length;
+            const percent = Math.min(100, (used / maxBricks) * 100);
+
+            document.getElementById('hudProgress').style.width = percent + '%';
+            document.getElementById('hudPercent').textContent = Math.round(percent) + '%';
+        }
+
+        // Assignment System
+        function createAssignment() {
+            const title = document.getElementById('assignTitle').value;
+            const maxBricks = parseInt(document.getElementById('assignMaxBricks').value);
+            const desc = document.getElementById('assignDesc').value;
+
+            currentAssignment = {
+                title,
+                maxBricks,
+                description: desc,
+                requirements: {
+                    height: document.getElementById('reqHeight').checked ? parseInt(document.getElementById('reqHeightVal').value) : 0,
+                    span: document.getElementById('reqSpan').checked ? parseInt(document.getElementById('reqSpanVal').value) : 0,
+                    colors: document.getElementById('reqColors').checked ? parseInt(document.getElementById('reqColorsVal').value) : 0
+                }
+            };
+
+            document.getElementById('maxBricks').textContent = maxBricks;
+            document.getElementById('validateBtn').classList.remove('hidden');
+
+            // Show HUD
+            document.getElementById('assignmentHUD').classList.remove('hidden');
+            document.getElementById('hudTitle').textContent = title;
+            document.getElementById('hudDesc').textContent = desc;
+
+            // Build requirements list
+            const reqDiv = document.getElementById('hudRequirements');
+            reqDiv.innerHTML = '';
+
+            if (currentAssignment.requirements.height > 0) {
+                reqDiv.innerHTML += `<div class="flex justify-between text-xs text-gray-500">
+                    <span>Min Height: ${currentAssignment.requirements.height}mm</span>
+                    <span id="req-height-status" class="text-amber-400">Pending</span>
+                </div>`;
+            }
+            if (currentAssignment.requirements.colors > 0) {
+                reqDiv.innerHTML += `<div class="flex justify-between text-xs text-gray-500">
+                    <span>Min Colors: ${currentAssignment.requirements.colors}</span>
+                    <span id="req-colors-status" class="text-amber-400">Pending</span>
+                </div>`;
+            }
+
+            closeAssignmentModal();
+            updateHUD();
+        }
+
+        function validateAssignment() {
+            if (!currentAssignment) return;
+
+            let passed = true;
+            let details = [];
+
+            // Check height
+            if (currentAssignment.requirements.height > 0) {
+                let maxHeight = 0;
+                bricks.forEach(b => {
+                    const h = b.mesh.position.y + brickSize/2;
+                    if (h > maxHeight) maxHeight = h;
+                });
+                const heightPass = maxHeight >= currentAssignment.requirements.height;
+                passed = passed && heightPass;
+                details.push(`Height: ${Math.round(maxHeight)}/${currentAssignment.requirements.height}mm ${heightPass ? '✓' : '✗'}`);
+
+                const statusEl = document.getElementById('req-height-status');
+                if (statusEl) {
+                    statusEl.textContent = heightPass ? 'Met' : 'Pending';
+                    statusEl.className = heightPass ? 'text-green-400' : 'text-amber-400';
+                }
+            }
+
+            // Check colors
+            if (currentAssignment.requirements.colors > 0) {
+                const colors = new Set(bricks.map(b => b.data.color));
+                const colorPass = colors.size >= currentAssignment.requirements.colors;
+                passed = passed && colorPass;
+                details.push(`Colors: ${colors.size}/${currentAssignment.requirements.colors} ${colorPass ? '✓' : '✗'}`);
+
+                const statusEl = document.getElementById('req-colors-status');
+                if (statusEl) {
+                    statusEl.textContent = colorPass ? 'Met' : 'Pending';
+                    statusEl.className = colorPass ? 'text-green-400' : 'text-amber-400';
+                }
+            }
+
+            // Show result
+            document.getElementById('valIcon').innerHTML = passed ? '<i class="fas fa-check"></i>' : '<i class="fas fa-times"></i>';
+            document.getElementById('valIcon').className = `w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border border-white/20 shadow-[0_0_30px_rgba(255,255,255,0.1)] ${passed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`;
+            document.getElementById('valTitle').textContent = passed ? 'Assignment Complete!' : 'Requirements Not Met';
+            document.getElementById('valMessage').textContent = passed ? 'Great job! Your build meets all requirements.' : 'Keep building to meet the requirements.';
+            document.getElementById('valDetails').innerHTML = details.map(d => `<div class="text-gray-400">${d}</div>`).join('');
+            document.getElementById('validationModal').classList.remove('hidden');
+        }
+
+        function clearAssignment() {
+            currentAssignment = null;
+            document.getElementById('assignmentHUD').classList.add('hidden');
+            document.getElementById('maxBricks').textContent = '∞';
+            document.getElementById('validateBtn').classList.add('hidden');
+        }
+
+        function closeValidationModal() {
+            document.getElementById('validationModal').classList.add('hidden');
+        }
+
+        // Save/Load
+        function saveProject() {
+            const project = {
+                name: document.getElementById('projectName').textContent,
+                bricks: bricks.map(b => ({
+                    x: b.mesh.position.x,
+                    y: b.mesh.position.y,
+                    z: b.mesh.position.z,
+                    type: b.data.type,
+                    color: b.data.color,
+                    rotation: b.mesh.rotation.y,
+                    material: b.data.material
+                })),
+                envItems: envItems.map(e => ({
+                    x: e.mesh.position.x,
+                    z: e.mesh.position.z,
+                    type: e.data.type
+                })),
+                assignment: currentAssignment,
+                platformColor: currentPlatformColor,
+                gridColor: currentGridColor,
+                gridOpacity: currentGridOpacity
+            };
+
+            const dataStr = JSON.stringify(project, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (project.name.replace(/\s+/g, '_') || 'project') + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast('Project saved!');
+        }
+
+        function loadProject(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const project = JSON.parse(e.target.result);
+
+                    // Clear current
+                    bricks.forEach(b => scene.remove(b.mesh));
+                    envItems.forEach(e => scene.remove(e.mesh));
+                    bricks = [];
+                    envItems = [];
+
+                    // Restore
+                    document.getElementById('projectName').textContent = project.name || 'Untitled Project';
+
+                    project.bricks.forEach(b => {
+                        placeBrick(b.x, b.y, b.z, b.type, b.color, b.rotation * 180 / Math.PI, b.material);
+                    });
+
+                    if (project.envItems) {
+                        project.envItems.forEach(e => {
+                            createEnvironmentItem(e.type, e.x, e.z);
+                        });
+                    }
+
+                    if (project.assignment) {
+                        currentAssignment = project.assignment;
+                        document.getElementById('maxBricks').textContent = currentAssignment.maxBricks;
+                        document.getElementById('validateBtn').classList.remove('hidden');
+                        document.getElementById('assignmentHUD').classList.remove('hidden');
+                        document.getElementById('hudTitle').textContent = currentAssignment.title;
+                        document.getElementById('hudDesc').textContent = currentAssignment.description;
+                        updateHUD();
+                    }
+
+                    if (project.platformColor) setPlatformColor(project.platformColor, null);
+
+                    showToast('Project loaded!');
+                    saveState();
+                } catch (err) {
+                    showToast('Error loading project');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function renameProject() {
+            const current = document.getElementById('projectName').textContent;
+            const newName = prompt('Project name:', current);
+            if (newName) {
+                document.getElementById('projectName').textContent = newName;
+            }
+        }
+
+        // Utility Functions
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full text-white text-sm font-medium z-50 border border-white/20 shadow-2xl';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.5s';
+                setTimeout(() => toast.remove(), 500);
+            }, 2000);
+        }
+
+        function setupTooltips() {
+            const tooltip = document.getElementById('tooltip');
+
+            document.querySelectorAll('[data-tooltip]').forEach(el => {
+                el.addEventListener('mouseenter', (e) => {
+                    tooltip.textContent = e.target.dataset.tooltip;
+                    tooltip.classList.add('show');
+                });
+
+                el.addEventListener('mousemove', (e) => {
+                    tooltip.style.left = e.clientX + 10 + 'px';
+                    tooltip.style.top = e.clientY + 10 + 'px';
+                });
+
+                el.addEventListener('mouseleave', () => {
+                    tooltip.classList.remove('show');
+                });
+            });
+        }
+
+        function toggleInstructions() {
+            document.getElementById('instructions').style.display = 'none';
+        }
+
+        // File drop support
+        document.addEventListener('dragover', (e) => e.preventDefault());
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.json')) {
+                loadProject(file);
+            }
+        });
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
